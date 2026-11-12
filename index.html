@@ -101,11 +101,12 @@ h1 span{color:#2f58b0}
       <button class="btn" id="bSpeed">⏩ Vitesse x1</button>
       <button class="btn go" id="bWave">▶ Lancer la Vague</button>
       <button class="btn" id="bMenu">☰ Menu</button>
+      <button class="btn treebtn" id="bTreeG">🌳 Arbre (Tab)</button>
     </div>
     <div id="wavebox" class="pill"><div id="waveTxt">VAGUE 1 / 10</div><div id="waveSub"></div></div>
     <div id="prefBox" class="pill"><div id="prefName"><span id="prefLbl">Arc de Triomphe</span><span id="prefVal">100</span></div><div class="bar"><i id="prefBar"></i></div></div>
     <div id="pcBox" class="pill"><span class="coin"></span>PC: <b id="pc">150</b></div>
-    <div id="hint" class="pill">Clic gauche : poser · Clic droit : annuler / vendre (50 %) · R : pivoter · Molette : zoom · WASD : déplacer · Q/E ou clic droit glissé : tourner · Espace : pause</div>
+    <div id="hint" class="pill">Clic gauche : poser · Clic droit : annuler / vendre (50 %) · R : pivoter · Molette : zoom · ZQSD : déplacer · A/E ou clic droit glissé : tourner · Tab : arbre de compétences · Espace : pause</div>
     <div id="toast" class="pill"></div>
     <div id="pauseTag" class="pill">PAUSE</div>
   </div>
@@ -669,8 +670,12 @@ function tracer(ax,ay,bx2,by2,col){
   const dd=dist(ax,ay,bx2,by2),n=Math.min(26,Math.ceil(dd/13));
   for(let i=0;i<=n;i++){const u=i/n;G.parts.push({k:'spark',x:lerp(ax,bx2,u),y:lerp(ay,by2,u),vx:0,vy:0,life:.1,max:.1,size:2.4,col:col||'#ffe9a0'});}
 }
+function muzzle(o,fwd,side){
+  const k=(o.r||10)/10.5*1.12,f=o.face,sd=(side===undefined?9.4:side)*k;
+  return[o.x+Math.cos(f)*fwd*k+Math.sin(f)*sd,o.y+Math.sin(f)*fwd*k-Math.cos(f)*sd];
+}
 function shoot(a,e,dmg){
-  const ang=Math.atan2(e.y-a.y,e.x-a.x),mx=a.x+Math.cos(ang)*16,my=a.y+Math.sin(ang)*16;
+  const[mx,my]=muzzle(a,a.type==='sniper'?36:24);
   tracer(mx,my,e.x,e.y);puff(mx,my,1,'#cfcfcf');hurtEnemy(e,dmg,false,true);
 }
 
@@ -747,13 +752,13 @@ function enemyAttack(e,d,tgt){
     if(tgt.isArc)puff(CX+Math.cos(a+Math.PI)*M.bR,CY+Math.sin(a+Math.PI)*M.bR,2,'#999');
   }else if(e.type==='rock'){
     const aa=a+rand(-.1,.1);
-    G.proj.push({kind:'rock',x:e.x+Math.cos(aa)*12,y:e.y+Math.sin(aa)*12-8,vx:Math.cos(aa)*300,vy:Math.sin(aa)*300,dmg:d.dmg,arc:d.arcDmg,life:1.2,rot:0});
+    const[rx,ry]=muzzle(e,10);G.proj.push({kind:'rock',x:rx,y:ry-8,vx:Math.cos(aa)*300,vy:Math.sin(aa)*300,dmg:d.dmg,arc:d.arcDmg,life:1.2,rot:0});
   }else if(e.type==='molotov'){
     const tx=tgt.x+rand(-14,14),ty=tgt.y+rand(-14,14);
-    lob('molo',e.x,e.y-10,tx,ty,{arc:d.arcDmg});
+    {const[mx,my]=muzzle(e,10);lob('molo',mx,my-10,tx,ty,{arc:d.arcDmg});}
   }else if(e.type==='pyro'){
     const tx=tgt.x+rand(-20,20),ty=tgt.y+rand(-20,20);
-    lob('molo',e.x,e.y-10,tx,ty,{arc:d.arcDmg,fr:56});
+    {const[mx,my]=muzzle(e,10);lob('molo',mx,my-10,tx,ty,{arc:d.arcDmg,fr:56});}
   }
 }
 function unitAI(a,d,dt){
@@ -764,7 +769,7 @@ function unitAI(a,d,dt){
     for(const e of G.enemies){if(e.dead)continue;const dd=dist(a.x,a.y,e.x,e.y);if(dd<=d.range&&dd<bd){bd=dd;best=e;}}
     if(best){
       a.face+=angDiff(a.face,Math.atan2(best.y-a.y,best.x-a.x))*Math.min(1,dt*10);
-      if(a.cd<=0){a.cd=d.cd*rcd;lob('gren',a.x+Math.cos(a.face)*14,a.y-10,best.x+rand(-10,10),best.y+rand(-10,10));}
+      if(a.cd<=0){a.cd=d.cd*rcd;{const[mx,my]=muzzle(a,24);lob('gren',mx,my-10,best.x+rand(-10,10),best.y+rand(-10,10));}}
     }
     return;
   }
@@ -808,8 +813,8 @@ function unitAI(a,d,dt){
         const T=Math.max(.8,dist(a.x,a.y,best.x,best.y)/330),sp=ENEMIES[best.type].speed*(best.moving?.8:0);
         const tx=best.x+Math.cos(best.face)*sp*T,ty=best.y+Math.sin(best.face)*sp*T;
         a.face=Math.atan2(ty-a.y,tx-a.x);a.cd=d.cd*(1-U('mcd'))*rcd;a.swing=.3;
-        lob('shell',a.x,a.y-12,tx,ty,{T,arcH:130,dmg:d.dmg*(1+U('mdm')+U('rdmg')*.5),rad:d.rad*(1+U('mrad'))});
-        puff(a.x+Math.cos(a.face)*14,a.y+Math.sin(a.face)*14,4,'#bdbdbd');
+        lob('shell',...muzzle(a,16,0).map((v,i)=>i?v-12:v),tx,ty,{T,arcH:130,dmg:d.dmg*(1+U('mdm')+U('rdmg')*.5),rad:d.rad*(1+U('mrad'))});
+        {const[mx,my]=muzzle(a,16,0);puff(mx,my,4,'#bdbdbd');}
       }else a.cd=.3;
     }
     return;
@@ -1678,8 +1683,8 @@ function resize(){
 }
 function updateCamera(dt){
   const keys=KEYS;let f=0,rt=0,yw=0;
-  if(keys.w||keys.arrowup)f+=1;if(keys.s||keys.arrowdown)f-=1;if(keys.d||keys.arrowright)rt+=1;if(keys.a||keys.arrowleft)rt-=1;
-  if(keys.q)yw-=1;if(keys.e)yw+=1;
+  if(keys.z||keys.arrowup)f+=1;if(keys.s||keys.arrowdown)f-=1;if(keys.d||keys.arrowright)rt+=1;if(keys.q||keys.arrowleft)rt-=1;
+  if(keys.a)yw-=1;if(keys.e)yw+=1;
   const sp=520*cam.zoom*dt;
   cam.tx+=(-Math.sin(cam.yaw)*f+Math.cos(cam.yaw)*rt)*sp;cam.tz+=(-Math.cos(cam.yaw)*f-Math.sin(cam.yaw)*rt)*sp;
   cam.yaw+=yw*1.4*dt;
@@ -1918,8 +1923,13 @@ cv.addEventListener('wheel',ev=>{ev.preventDefault();cam.zoom=clamp(cam.zoom*(ev
 window.addEventListener('keyup',ev=>{KEYS[ev.key.toLowerCase()]=false;});
 window.addEventListener('keydown',ev=>{
   KEYS[ev.key.toLowerCase()]=true;
-  if(!G||$('title').classList.contains('hidden')===false)return;
   const k=ev.key.toLowerCase();
+  if(k==='tab'){ev.preventDefault();if(!G||ev.repeat)return;
+    if(!$('tree').classList.contains('hidden'))closeTree();
+    else if($('title').classList.contains('hidden')&&$('endscr').classList.contains('hidden'))openTree('game');
+    return;}
+  if(!$('tree').classList.contains('hidden')){if(k==='escape')closeTree();return;}
+  if(!G||$('title').classList.contains('hidden')===false)return;
   if(k.length===1&&KEYSTR.includes(k)){choose(DOCK[KEYSTR.indexOf(k)]);}
   else if(k==='escape'){sel=null;refreshDock();}
   else if(k==='r'){placeRot+=Math.PI/6;}
@@ -1971,8 +1981,18 @@ $('bStart').onclick=()=>launch(chosen);
 /* ---------- écran de l'arbre de compétences ---------- */
 const TX=118,TY=116,TPX=20,TPY=44,NW=112,NH=96;
 let treeBack=null;
-function openTree(from){treeBack=from;$('tree').classList.remove('hidden');buildTree();}
-function closeTree(){$('tree').classList.add('hidden');refreshPdBadges();}
+let treePaused=false;
+function openTree(from){
+  treeBack=from;treePaused=false;
+  if(from==='game'&&G&&!G.paused&&!G.over){G.paused=true;treePaused=true;syncButtons();}
+  for(const k in KEYS)KEYS[k]=false;
+  $('tree').classList.remove('hidden');buildTree();
+}
+function closeTree(){
+  $('tree').classList.add('hidden');refreshPdBadges();
+  if(treeBack==='game'&&G){const keep=sel;buildDock();sel=isUnlocked(keep)?keep:null;refreshDock();if(treePaused){G.paused=false;syncButtons();}}
+  treeBack=null;treePaused=false;
+}
 function nodeDesc(n){
   if(n.unlock){const d=DEFS[n.unlock];return 'Débloque : <b>'+d.name+'</b><br>'+d.desc+' · '+d.cost+' PC';}
   return n.desc||'';
@@ -2020,6 +2040,7 @@ function buildTree(){
   refreshPdBadges();
 }
 $('bTree').onclick=()=>openTree('title');
+$('bTreeG').onclick=()=>{if(G&&$('title').classList.contains('hidden'))openTree('game');};
 $('bTree2').onclick=()=>{$('endscr').classList.add('hidden');showTitle();openTree('title');};
 $('bTreeClose').onclick=closeTree;
 $('bReset').onclick=()=>{if(SAVE.owned.length>1&&confirm('Réinitialiser l\'arbre ? Tous vos points seront remboursés.')){resetTree();buildTree();}};
