@@ -89,6 +89,15 @@ h1 span{color:#2f58b0}
 .node.owned{background:#c8efc5}.node.owned .nc{color:#2e8b3a}
 .node.unl .nt:before{content:'🔓 ';}
 @keyframes pul{50%{box-shadow:0 0 0 5px #ffd35a,0 3px 0 rgba(0,0,0,.28)}}
+#cheat{z-index:60}
+#cheatBox{background:#1d2230;color:#fff;border:3px solid #ffd75e;border-radius:18px;padding:20px 24px;width:min(420px,94vw);text-align:center;box-shadow:0 6px 0 rgba(0,0,0,.5)}
+#cheatBox h3{font:900 20px 'Inter',sans-serif;margin-bottom:10px;color:#ffd75e}
+#cheatBox input{font:800 20px 'Inter',sans-serif;text-align:center;letter-spacing:6px;width:70%;padding:8px;border-radius:10px;border:2px solid #ffd75e;background:#2b3245;color:#fff}
+#cheatBox .row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:8px 0}
+#cheatBox .btn{font-size:13px;padding:7px 11px}
+#cheatMsg{font:600 12px 'Inter',sans-serif;color:#9fe0a5;min-height:16px;margin-top:6px}
+#bCheat{position:fixed;right:8px;bottom:6px;z-index:25;opacity:.25;font-size:12px;padding:3px 8px;border-radius:8px}
+#bCheat:hover{opacity:1}
 #pauseTag{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 38px;font:900 38px 'Inter',sans-serif;display:none}
 </style>
 </head>
@@ -150,6 +159,22 @@ h1 span{color:#2f58b0}
     <div id="treeScroll"><div id="treeWrap"><div id="treeInner"><svg id="treeSvg"></svg></div></div></div>
   </div>
 </div>
+
+<div id="cheat" class="overlay hidden">
+  <div id="cheatBox">
+    <h3>🔒 MENU TRICHE</h3>
+    <div id="cheatLock"><input id="cheatCode" type="password" maxlength="12" placeholder="••••••" autocomplete="off"><div class="row"><button class="btn go" id="cheatOk">Valider</button><button class="btn" id="cheatX">Annuler</button></div></div>
+    <div id="cheatMain" style="display:none">
+      <div class="row"><span>Points de doctrine :</span><button class="btn" data-pd="10">+10</button><button class="btn" data-pd="50">+50</button><button class="btn" data-pd="250">+250</button></div>
+      <div class="row"><span>Argent (PC, en partie) :</span><button class="btn" data-pc="500">+500</button><button class="btn" data-pc="5000">+5000</button></div>
+      <div class="row"><button class="btn" id="chAll">Tout débloquer</button><button class="btn" id="chReset">Remise à zéro</button></div>
+      <div class="row"><button class="btn" id="chHeal">Monument PV max</button><button class="btn" id="chSkip">Vague suivante</button></div>
+      <div class="row"><button class="btn go" id="cheatClose">Fermer</button></div>
+    </div>
+    <div id="cheatMsg"></div>
+  </div>
+</div>
+<button class="btn" id="bCheat" title="Menu triche (F9)">🔒</button>
 
 <script>/**
  * @license
@@ -1924,6 +1949,8 @@ window.addEventListener('keyup',ev=>{KEYS[ev.key.toLowerCase()]=false;});
 window.addEventListener('keydown',ev=>{
   KEYS[ev.key.toLowerCase()]=true;
   const k=ev.key.toLowerCase();
+  if(k==='f9'){ev.preventDefault();openCheat();return;}
+  if(!$('cheat').classList.contains('hidden')){if(k==='escape')closeCheat();return;}
   if(k==='tab'){ev.preventDefault();if(!G||ev.repeat)return;
     if(!$('tree').classList.contains('hidden'))closeTree();
     else if($('title').classList.contains('hidden')&&$('endscr').classList.contains('hidden'))openTree('game');
@@ -1977,6 +2004,30 @@ function refreshPdBadges(){
 function showTitle(){buildTitle();buildDiffs();refreshPdBadges();$('title').classList.remove('hidden');}
 function launch(i){$('title').classList.add('hidden');buildDock();newGame(i);resize();syncButtons();}
 $('bStart').onclick=()=>launch(chosen);
+
+/* ---------- menu de triche (code secret) ---------- */
+const CHEAT_CODE='123456';let cheatOK=false,cheatPaused=false;
+function cheatMsg(t){$('cheatMsg').textContent=t;}
+function openCheat(){
+  if(!$('cheat').classList.contains('hidden')){closeCheat();return;}
+  cheatPaused=false;if(G&&!G.paused&&!G.over&&$('title').classList.contains('hidden')){G.paused=true;cheatPaused=true;syncButtons();}
+  for(const k in KEYS)KEYS[k]=false;
+  $('cheat').classList.remove('hidden');$('cheatLock').style.display=cheatOK?'none':'block';$('cheatMain').style.display=cheatOK?'block':'none';
+  cheatMsg('');$('cheatCode').value='';if(!cheatOK)setTimeout(()=>$('cheatCode').focus(),50);
+}
+function closeCheat(){$('cheat').classList.add('hidden');if(cheatPaused&&G){G.paused=false;syncButtons();}cheatPaused=false;refreshPdBadges();}
+function tryCode(){
+  if($('cheatCode').value===CHEAT_CODE){cheatOK=true;$('cheatLock').style.display='none';$('cheatMain').style.display='block';cheatMsg('Accès accordé');}
+  else{cheatMsg('Code incorrect');$('cheatCode').value='';}
+}
+$('bCheat').onclick=openCheat;$('cheatOk').onclick=tryCode;$('cheatX').onclick=closeCheat;$('cheatClose').onclick=closeCheat;
+$('cheatCode').addEventListener('keydown',ev=>{ev.stopPropagation();if(ev.key==='Enter')tryCode();if(ev.key==='Escape')closeCheat();});
+document.querySelectorAll('[data-pd]').forEach(b=>b.onclick=()=>{SAVE.pd+=+b.dataset.pd;saveGame();refreshPdBadges();cheatMsg('+'+b.dataset.pd+' PD (total '+SAVE.pd+')');});
+document.querySelectorAll('[data-pc]').forEach(b=>b.onclick=()=>{if(G&&!G.over){G.pc+=+b.dataset.pc;refreshDockState();cheatMsg('+'+b.dataset.pc+' PC');}else cheatMsg('Lancez une partie d\'abord');});
+$('chAll').onclick=()=>{SAVE.owned=SK.map(n=>n.id);computeUP();saveGame();if(G&&$('title').classList.contains('hidden')){const k=sel;buildDock();sel=k;refreshDock();}cheatMsg('Arbre entièrement débloqué');};
+$('chReset').onclick=()=>{SAVE={pd:8,owned:['qg'],games:0,wins:0,best:0};computeUP();saveGame();refreshPdBadges();cheatMsg('Sauvegarde remise à zéro');};
+$('chHeal').onclick=()=>{if(G&&!G.over){G.arcHp=G.arcMax;cheatMsg('Monument réparé');}else cheatMsg('Lancez une partie d\'abord');};
+$('chSkip').onclick=()=>{if(G&&!G.over&&G.state==='prep'){startWave();cheatMsg('Vague lancée');}else if(G&&G.state==='wave'){G.queue.length=0;G.enemies.forEach(e=>e.dead=true);cheatMsg('Vague terminée');}else cheatMsg('Lancez une partie d\'abord');};
 
 /* ---------- écran de l'arbre de compétences ---------- */
 const TX=118,TY=116,TPX=20,TPY=44,NW=112,NH=96;
